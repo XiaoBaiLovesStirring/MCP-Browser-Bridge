@@ -11,24 +11,31 @@
     <header>
       <img src="../icons/icon48.png" alt="" class="logo" />
       <div>
-        <div class="title">MCP-Browser-Bridge</div>
-        <div class="status" id="statusText">Active</div>
+        <div class="title" data-i18n="pop.title">MCP-Browser-Bridge</div>
+        <div class="status" id="statusText" data-i18n="pop.active">Active</div>
       </div>
       <span class="dot connected"></span>
     </header>
 
+    <div class="lang-row">
+      <div class="lang-switch" id="langSwitch">
+        <button type="button" data-lang="en" class="lang">EN</button>
+        <button type="button" data-lang="zh" class="lang">中文</button>
+      </div>
+    </div>
+
     <div class="meta" id="meta">—</div>
 
     <div class="actions">
-      <button id="consoleBtn" class="btn primary">MCP Console</button>
-      <button id="optionsBtn" class="btn">Settings</button>
+      <button id="consoleBtn" class="btn primary" data-i18n="pop.console">MCP Console</button>
+      <button id="optionsBtn" class="btn" data-i18n="pop.settings">Settings</button>
     </div>
 
     <div class="section">
-      <div class="section-title">Quick test</div>
+      <div class="section-title" data-i18n="pop.quickTest">Quick test</div>
       <div class="row">
-        <input type="text" id="queryInput" placeholder="Search query…" />
-        <button id="searchBtn" class="btn small primary">Search</button>
+        <input type="text" id="queryInput" data-i18n-attr="pop.searchQuery:placeholder" placeholder="Search query…" />
+        <button id="searchBtn" class="btn small primary" data-i18n="pop.search">Search</button>
       </div>
       <pre id="testOutput" class="output" hidden></pre>
     </div>

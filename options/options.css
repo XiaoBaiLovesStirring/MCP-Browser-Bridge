@@ -42,6 +42,31 @@ html, body {
 .brand h1 { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: .2px; }
 .subtitle { margin: 2px 0 0; color: var(--muted); font-size: 12.5px; }
 
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.lang-switch {
+  display: inline-flex;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px;
+}
+.lang {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.lang.active { background: var(--accent); color: #fff; }
+
 .status-pill {
   display: inline-flex;
   align-items: center;

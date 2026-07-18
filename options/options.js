@@ -3,6 +3,8 @@ import {
   loadEngines, saveEngines, resetEngines, validateEngine, engineIdFromName,
 } from "../lib/search-engines.js";
 import { loadSettings, saveSettings } from "../lib/settings.js";
+import { STRINGS } from "../lib/strings.js";
+import { initLang, t, applyTranslations, bindLangSwitch, onLangChange } from "../lib/i18n.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -23,14 +25,14 @@ async function saveBehavior() {
     maxResults: Number($("maxResults").value) || 20,
   };
   await chrome.runtime.sendMessage({ type: "apply-settings", settings });
-  toast("Saved", "ok");
+  toast(t("opt.saved"), "ok");
 }
 
 function renderEngines() {
   const list = $("engineList");
   list.innerHTML = "";
   if (engines.length === 0) {
-    list.innerHTML = '<div class="hint">No engines configured. Click "+ Add engine".</div>';
+    list.innerHTML = `<div class="hint">${t("opt.noEngines")}</div>`;
     return;
   }
   engines.forEach((eng, idx) => {
@@ -46,8 +48,8 @@ function renderEngines() {
         <div class="eng-url">${escapeHtml(eng.urlTemplate)}</div>
       </div>
       <div class="eng-actions">
-        <button class="btn small secondary" data-idx="${idx}" data-act="edit">Edit</button>
-        <button class="btn small danger" data-idx="${idx}" data-act="del">Delete</button>
+        <button class="btn small secondary" data-idx="${idx}" data-act="edit">${t("opt.edit")}</button>
+        <button class="btn small danger" data-idx="${idx}" data-act="del">${t("opt.delete")}</button>
       </div>
     `;
     list.appendChild(row);
@@ -63,7 +65,7 @@ function escapeHtml(s) {
 function openModal(idx) {
   editingIndex = idx;
   const eng = idx >= 0 ? engines[idx] : { name: "", urlTemplate: "", resultSelector: "", linkSelector: "a", titleSelector: "", snippetSelector: "", enabled: true };
-  $("modalTitle").textContent = idx >= 0 ? "Edit engine" : "Add engine";
+  $("modalTitle").textContent = idx >= 0 ? t("opt.modalEditTitle") : t("opt.modalAddTitle");
   $("engName").value = eng.name;
   $("engUrl").value = eng.urlTemplate;
   $("engResult").value = eng.resultSelector || "";
@@ -105,31 +107,32 @@ function saveEngineFromModal() {
   }
   closeModal();
   renderEngines();
-  toast("Engine saved (click \"Save engines\" to persist)", "ok");
+  toast(t("opt.engineSaved"), "ok");
 }
 
 async function persistEngines() {
   await saveEngines(engines);
-  toast("Engines saved", "ok");
+  toast(t("opt.enginesSaved"), "ok");
 }
 
 async function doResetEngines() {
   engines = await resetEngines();
   renderEngines();
-  toast("Engines reset to defaults", "ok");
+  toast(t("opt.enginesReset"), "ok");
 }
 
 let toastTimer = null;
 function toast(msg, kind) {
-  const t = $("toast");
-  t.textContent = msg;
-  t.className = "toast show " + (kind || "");
-  t.hidden = false;
+  const tt = $("toast");
+  tt.textContent = msg;
+  tt.className = "toast show " + (kind || "");
+  tt.hidden = false;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { t.classList.remove("show"); }, 2200);
+  toastTimer = setTimeout(() => { tt.classList.remove("show"); }, 2200);
 }
 
 function bindEvents() {
+  bindLangSwitch();
   $("openConsole").addEventListener("click", () => chrome.tabs.create({ url: chrome.runtime.getURL("mcp/mcp.html") }));
   $("saveBehaviorBtn").addEventListener("click", saveBehavior);
   $("addEngineBtn").addEventListener("click", () => openModal(-1));
@@ -146,7 +149,7 @@ function bindEvents() {
       else if (btn.dataset.act === "del") {
         engines.splice(idx, 1);
         renderEngines();
-        toast("Deleted (click \"Save engines\" to persist)", "ok");
+        toast(t("opt.deleted"), "ok");
       }
     }
   });
@@ -160,10 +163,15 @@ function bindEvents() {
   $("modal").addEventListener("click", (e) => {
     if (e.target === $("modal")) closeModal();
   });
+
+  // Re-render engine list (which has localized button labels) on language change.
+  onLangChange(() => renderEngines());
 }
 
 async function init() {
+  await initLang(STRINGS);
   bindEvents();
+  applyTranslations();
   await loadBehaviorForm();
   engines = await loadEngines();
   renderEngines();

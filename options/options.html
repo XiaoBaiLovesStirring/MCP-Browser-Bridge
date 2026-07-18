@@ -12,92 +12,98 @@
       <img src="../icons/icon48.png" alt="" class="brand-icon" />
       <div>
         <h1>MCP-Browser-Bridge</h1>
-        <p class="subtitle">Configure search engines and extraction behavior. Pure browser extension, no setup required.</p>
+        <p class="subtitle" data-i18n="opt.subtitle">Configure search engines and extraction behavior. Pure browser extension, no setup required.</p>
       </div>
     </div>
-    <button id="openConsole" class="btn primary">Open MCP Console</button>
+    <div class="topbar-right">
+      <div class="lang-switch" id="langSwitch">
+        <button type="button" data-lang="en" class="lang">EN</button>
+        <button type="button" data-lang="zh" class="lang">中文</button>
+      </div>
+      <button id="openConsole" class="btn primary" data-i18n="opt.openConsole">Open MCP Console</button>
+    </div>
   </header>
 
   <main class="layout">
     <section class="card">
-      <h2>Behavior</h2>
+      <h2 data-i18n="opt.behaviorTitle">Behavior</h2>
       <div class="grid two">
         <label class="field">
-          <span>Tab lifecycle after extraction</span>
+          <span data-i18n="opt.tabLifecycle">Tab lifecycle after extraction</span>
           <select id="tabLifecycle">
-            <option value="close">Close tab (recommended)</option>
-            <option value="keep">Keep tab open</option>
+            <option value="close" data-i18n="opt.tabClose">Close tab (recommended)</option>
+            <option value="keep" data-i18n="opt.tabKeep">Keep tab open</option>
           </select>
         </label>
         <label class="field">
-          <span>Max results per search</span>
+          <span data-i18n="opt.maxResults">Max results per search</span>
           <input type="number" id="maxResults" min="1" max="100" />
         </label>
       </div>
       <div class="grid two">
         <label class="field">
-          <span>Page load timeout (ms)</span>
+          <span data-i18n="opt.pageTimeout">Page load timeout (ms)</span>
           <input type="number" id="pageLoadTimeoutMs" min="2000" max="60000" step="500" />
         </label>
         <div class="field">
           <span>&nbsp;</span>
-          <button id="saveBehaviorBtn" class="btn primary">Save</button>
+          <button id="saveBehaviorBtn" class="btn primary" data-i18n="opt.save">Save</button>
         </div>
       </div>
     </section>
 
     <section class="card">
       <div class="card-head">
-        <h2>Search engines</h2>
-        <button id="addEngineBtn" class="btn primary small">+ Add engine</button>
+        <h2 data-i18n="opt.enginesTitle">Search engines</h2>
+        <button id="addEngineBtn" class="btn primary small" data-i18n="opt.addEngine">+ Add engine</button>
       </div>
-      <p class="hint">Use <code>{query}</code> as the query placeholder in the URL template.</p>
+      <p class="hint" data-i18n="opt.enginesHint">Use <code>{query}</code> as the query placeholder in the URL template.</p>
       <div id="engineList" class="engine-list"></div>
       <div class="actions">
-        <button id="resetEnginesBtn" class="btn ghost">Reset to defaults</button>
-        <button id="saveEnginesBtn" class="btn primary">Save engines</button>
+        <button id="resetEnginesBtn" class="btn ghost" data-i18n="opt.resetEngines">Reset to defaults</button>
+        <button id="saveEnginesBtn" class="btn primary" data-i18n="opt.saveEngines">Save engines</button>
       </div>
     </section>
   </main>
 
   <div class="modal-backdrop" id="modal" hidden>
     <div class="modal">
-      <h3 id="modalTitle">Add engine</h3>
+      <h3 id="modalTitle" data-i18n="opt.modalAddTitle">Add engine</h3>
       <label class="field">
-        <span>Name</span>
+        <span data-i18n="opt.fieldName">Name</span>
         <input type="text" id="engName" placeholder="Google" />
       </label>
       <label class="field">
-        <span>URL template <small class="muted">(must contain {query})</small></span>
+        <span><span data-i18n="opt.fieldUrl">URL template</span> <small class="muted" data-i18n="opt.fieldUrlHint">(must contain {query})</small></span>
         <input type="text" id="engUrl" placeholder="https://www.google.com/search?q={query}" />
       </label>
       <div class="grid two">
         <label class="field">
-          <span>Result selector <small class="muted">(CSS)</small></span>
+          <span><span data-i18n="opt.fieldResult">Result selector</span> <small class="muted" data-i18n="opt.fieldResultHint">(CSS)</small></span>
           <input type="text" id="engResult" placeholder="div.g" />
         </label>
         <label class="field">
-          <span>Link selector</span>
+          <span data-i18n="opt.fieldLink">Link selector</span>
           <input type="text" id="engLink" placeholder="a" />
         </label>
       </div>
       <div class="grid two">
         <label class="field">
-          <span>Title selector</span>
+          <span data-i18n="opt.fieldTitle">Title selector</span>
           <input type="text" id="engTitle" placeholder="h3" />
         </label>
         <label class="field">
-          <span>Snippet selector</span>
+          <span data-i18n="opt.fieldSnippet">Snippet selector</span>
           <input type="text" id="engSnippet" placeholder="div[data-sncf]" />
         </label>
       </div>
       <label class="field checkbox">
         <input type="checkbox" id="engEnabled" />
-        <span>Enabled</span>
+        <span data-i18n="opt.fieldEnabled">Enabled</span>
       </label>
       <div class="actions">
-        <button id="modalCancel" class="btn ghost">Cancel</button>
-        <button id="modalSave" class="btn primary">Save</button>
+        <button id="modalCancel" class="btn ghost" data-i18n="opt.cancel">Cancel</button>
+        <button id="modalSave" class="btn primary" data-i18n="opt.modalSave">Save</button>
       </div>
     </div>
   </div>

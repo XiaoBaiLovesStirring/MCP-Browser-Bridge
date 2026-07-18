@@ -1,11 +1,14 @@
 // popup/popup.js
+import { STRINGS } from "../lib/strings.js";
+import { initLang, t, applyTranslations, bindLangSwitch, getLang } from "../lib/i18n.js";
+
 const $ = (id) => document.getElementById(id);
 
 async function refresh() {
   try {
     const r = await chrome.runtime.sendMessage({ type: "get-status" });
     if (r && r.ok) {
-      $("statusText").textContent = `Active · ${r.toolCount} tools`;
+      $("statusText").textContent = `${t("pop.active")} · ${r.toolCount} ${t("pop.tools")}`;
       $("meta").textContent = `v${r.version} · ${r.extensionId ? r.extensionId.slice(0, 16) + "…" : ""}`;
     }
   } catch (e) {
@@ -21,7 +24,7 @@ $("searchBtn").addEventListener("click", async () => {
   if (!query) return;
   const out = $("testOutput");
   out.hidden = false;
-  out.textContent = "Searching…";
+  out.textContent = "…";
   try {
     const payload = { jsonrpc: "2.0", id: Date.now(), method: "tools/call", params: { name: "search", arguments: { query } } };
     const r = await chrome.runtime.sendMessage({ type: "mcp-request", payload });
@@ -32,4 +35,9 @@ $("searchBtn").addEventListener("click", async () => {
   }
 });
 
-refresh();
+(async () => {
+  await initLang(STRINGS);
+  bindLangSwitch();
+  applyTranslations();
+  refresh();
+})();
