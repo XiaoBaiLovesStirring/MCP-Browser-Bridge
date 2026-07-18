@@ -55,6 +55,36 @@ async function loadExtId() {
   }
 }
 
+async function refreshMcpBridge() {
+  // Compute endpoints from current settings.
+  let host = "127.0.0.1", port = 7777;
+  try {
+    const st = await chrome.runtime.sendMessage({ type: "get-status" });
+    if (st && st.ok && st.settings) {
+      host = st.settings.host || "127.0.0.1";
+      port = st.settings.port || 7777;
+    }
+  } catch (_) {}
+  $("mcpEpHttp").value = `http://${host}:${port}/mcp`;
+  $("mcpEpSse").value = `http://${host}:${port}/sse`;
+
+  try {
+    const r = await chrome.runtime.sendMessage({ type: "bridge-get-status" });
+    if (!r || !r.ok) return;
+    const pill = $("mcpBridgePill");
+    const stateText = $("mcpBridgeState");
+    if (r.ready) {
+      pill.dataset.state = "connected";
+      stateText.textContent = t("mcp.bridgeConnected");
+    } else {
+      pill.dataset.state = r.status && r.status.error ? "error" : "disconnected";
+      stateText.textContent = t("mcp.bridgeDisconnected");
+    }
+  } catch (e) {
+    // ignore
+  }
+}
+
 async function callTool() {
   const name = $("toolSelect").value;
   const argsText = $("toolArgs").value.trim() || "{}";
@@ -105,6 +135,19 @@ $("refreshTools").addEventListener("click", loadTools);
 $("callTool").addEventListener("click", callTool);
 $("clearOutput").addEventListener("click", () => { $("output").hidden = true; $("output").textContent = ""; });
 $("sendRaw").addEventListener("click", sendRaw);
+$("bridgeRefresh").addEventListener("click", refreshMcpBridge);
+document.querySelectorAll(".bridge-ep-row button[data-mcp-ep]").forEach((btn) => {
+  btn.addEventListener("click", async () => {
+    const which = btn.dataset.mcpEp;
+    const input = which === "http" ? $("mcpEpHttp") : $("mcpEpSse");
+    try {
+      await navigator.clipboard.writeText(input.value);
+      toast(t("mcp.bridgeCopied"), "ok");
+    } catch (e) {
+      toast(t("mcp.bridgeCopy") + ": " + e.message, "err");
+    }
+  });
+});
 
 $("rawInput").value = JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }, null, 2);
 
@@ -114,4 +157,6 @@ $("rawInput").value = JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/lis
   applyTranslations();
   loadExtId();
   loadTools();
+  refreshMcpBridge();
+  setInterval(refreshMcpBridge, 3000);
 })();

@@ -32,6 +32,33 @@
     </section>
 
     <section class="card">
+      <div class="card-head">
+        <h2 data-i18n="mcp.bridgeCard">Native host bridge</h2>
+        <button id="bridgeRefresh" class="btn small" data-i18n="mcp.bridgeRefresh">Refresh</button>
+      </div>
+      <p class="hint" data-i18n="mcp.bridgeHint">Desktop MCP clients connect to the local URL below. The host is a single Node.js file (no Python) bundled in native-host/.</p>
+      <div class="bridge-row">
+        <span class="bridge-label" data-i18n="mcp.bridgeStatus">Status</span>
+        <span class="status-pill" id="mcpBridgePill" data-state="disconnected">
+          <span class="dot"></span>
+          <span id="mcpBridgeState">—</span>
+        </span>
+      </div>
+      <div class="bridge-endpoints" id="mcpBridgeEndpoints">
+        <div class="bridge-ep-row">
+          <span class="bridge-ep-label" data-i18n="opt.bridgeStreamableHttp">Streamable HTTP</span>
+          <input type="text" id="mcpEpHttp" readonly placeholder="http://127.0.0.1:7777/mcp" />
+          <button class="btn small" data-mcp-ep="http" data-i18n="mcp.bridgeCopy">Copy</button>
+        </div>
+        <div class="bridge-ep-row">
+          <span class="bridge-ep-label" data-i18n="opt.bridgeSse">Legacy SSE</span>
+          <input type="text" id="mcpEpSse" readonly placeholder="http://127.0.0.1:7777/sse" />
+          <button class="btn small" data-mcp-ep="sse" data-i18n="mcp.bridgeCopy">Copy</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
       <h2 data-i18n="mcp.toolsTitle">Tools</h2>
       <div class="row">
         <select id="toolSelect"></select>

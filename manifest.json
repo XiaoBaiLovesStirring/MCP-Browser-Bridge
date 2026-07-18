@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "MCP-Browser-Bridge",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Pure browser extension exposing search engines and live tabs as MCP tools. AI can operate web pages via JS. Zero dependencies.",
   "minimum_chrome_version": "114",
   "icons": {
@@ -30,7 +30,8 @@
     "storage",
     "tabs",
     "activeTab",
-    "scripting"
+    "scripting",
+    "nativeMessaging"
   ],
   "host_permissions": [
     "<all_urls>"

@@ -217,3 +217,50 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent);
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(-4px); }
 .toast.ok { border-color: var(--ok); }
 .toast.err { border-color: var(--danger); }
+
+/* ---- native host bridge status ---- */
+.bridge-status {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.bridge-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.bridge-label { font-size: 12.5px; color: var(--muted); font-weight: 500; }
+.bridge-endpoints {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+.bridge-ep-row {
+  display: grid;
+  grid-template-columns: 130px 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+.bridge-ep-label { font-size: 12px; color: var(--muted); }
+.bridge-ep-row input {
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  padding: 6px 9px;
+}
+.bridge-error {
+  font-size: 12px;
+  color: var(--danger);
+  background: rgba(255, 92, 92, 0.08);
+  border: 1px solid #5a2727;
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+.bridge-error[hidden] { display: none; }

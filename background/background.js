@@ -1,10 +1,13 @@
 // background/background.js
-// Service worker for the pure browser extension.
+// Service worker for MCP-Browser-Bridge.
 // Owns the McpServer instance and routes MCP JSON-RPC requests from:
 //   1. Internal callers (popup, options, MCP console) via chrome.runtime.onMessage
 //   2. External web pages / MCP clients via chrome.runtime.onMessageExternal
 //      (enabled by manifest's externally_connectable)
-// No native messaging, no Python host, no external dependencies.
+//   3. Desktop MCP clients via the Node.js native host (127.0.0.1:7777),
+//      bridged through chrome.runtime.connectNative -> lib/bridge.js
+// The native host is the only way to expose a real TCP port to local MCP
+// clients from an MV3 extension. The host is pure Node.js (no Python).
 
 import { McpServer, textContent, errorContent } from "../lib/mcp-protocol.js";
 import { loadEngines, enabledEngines, findEngine } from "../lib/search-engines.js";
@@ -13,11 +16,13 @@ import {
   runSearch, fetchPage, extractCurrentTab,
   evalJsInTab, evalJsOnUrl, evalJsCurrent, listTabs,
 } from "../lib/search-runner.js";
+import bridge from "../lib/bridge.js";
 
-const SERVER_INFO = { name: "mcp-browser-bridge", version: "0.5.0" };
+const SERVER_INFO = { name: "mcp-browser-bridge", version: "0.6.0" };
 
 let server = null;
 let extensionId = null;
+let bridgeStatus = { connected: false, hostInfo: null, error: null, attempts: 0 };
 
 function buildServer() {
   const s = new McpServer(SERVER_INFO);
@@ -177,8 +182,26 @@ function buildServer() {
     }
   });
 
+  s.registerTool("bridge_status", {
+    description: "Return the status of the native host bridge (Node.js process listening on 127.0.0.1:7777). Shows whether desktop MCP clients can reach the extension over HTTP/SSE.",
+    inputSchema: { type: "object", properties: {} },
+  }, async () => {
+    const settings = await loadSettings();
+    return textContent(JSON.stringify({
+      connected: bridge.isReady(),
+      hostInfo: bridge.getHostInfo(),
+      bridgeStatus,
+      configured: { host: settings.host, port: settings.port, transport: settings.transport, hostEnabled: settings.hostEnabled },
+      endpoints: bridge.getHostInfo() ? {
+        streamableHttp: `http://${bridge.getHostInfo().host}:${bridge.getHostInfo().port}/mcp`,
+        sse: `http://${bridge.getHostInfo().host}:${bridge.getHostInfo().port}/sse`,
+        health: `http://${bridge.getHostInfo().host}:${bridge.getHostInfo().port}/health`,
+      } : null,
+    }, null, 2));
+  });
+
   s.registerTool("extension_status", {
-    description: "Return extension status: version, tool count, configured engines, current settings.",
+    description: "Return extension status: version, tool count, configured engines, current settings, bridge status.",
     inputSchema: { type: "object", properties: {} },
   }, async () => {
     const settings = await loadSettings();
@@ -194,6 +217,16 @@ function buildServer() {
         tabLifecycle: settings.tabLifecycle,
         pageLoadTimeoutMs: settings.pageLoadTimeoutMs,
         maxResults: settings.maxResults,
+        host: settings.host,
+        port: settings.port,
+        transport: settings.transport,
+        hostEnabled: settings.hostEnabled,
+      },
+      bridge: {
+        connected: bridge.isReady(),
+        hostInfo: bridge.getHostInfo(),
+        error: bridgeStatus.error,
+        reconnectAttempts: bridgeStatus.attempts,
       },
     }, null, 2));
   });
@@ -217,7 +250,55 @@ async function handleMcpPayload(payload) {
   return await server.handleMessage(payload, {});
 }
 
-// --- Internal messages (popup / options / MCP console) ---
+// --------------------------------------------------------------------------- //
+// Native host bridge
+// --------------------------------------------------------------------------- //
+//
+// When the host receives an HTTP/SSE MCP request from a desktop client, it
+// sends { type: "request", clientId, payload } over native messaging. We
+// dispatch the payload to the MCP server and ship the response back.
+
+bridge.onStatusChange((status) => {
+  bridgeStatus = {
+    connected: status.connected,
+    hostInfo: status.hostInfo,
+    error: status.error,
+    attempts: status.attempts,
+  };
+  console.log(`[mcp-browser-bridge] bridge status: connected=${status.connected} attempts=${status.attempts} error=${status.error || ""}`);
+});
+
+bridge.onRequest(async (clientId, payload) => {
+  // payload is a JSON-RPC 2.0 message. The McpServer returns the response
+  // object (or null for notifications). Forward it back to the host tagged
+  // with the same clientId so it can be routed to the right HTTP session.
+  const response = await handleMcpPayload(payload);
+  if (response !== null) {
+    bridge.sendResponse(clientId, response);
+  }
+  // For notifications (response === null), nothing to send.
+  return null; // we already called sendResponse ourselves
+});
+
+// Announce ourselves to the host as soon as it becomes ready. The host logs
+// this; the tool list is for debugging/visibility.
+bridge.onStatusChange((status) => {
+  if (status.connected) {
+    bridge.announceBridgeReady(SERVER_INFO.version, server.listTools().map((t) => t.name));
+  }
+});
+
+// Auto-connect on startup if hostEnabled.
+(async () => {
+  const settings = await loadSettings();
+  if (settings.hostEnabled) {
+    bridge.connect();
+  }
+})();
+
+// --------------------------------------------------------------------------- //
+// Internal messages (popup / options / MCP console)
+// --------------------------------------------------------------------------- //
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   (async () => {
     if (!msg || !msg.type) {
@@ -248,12 +329,27 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           extensionId,
           toolCount: server.listTools().length,
           settings,
+          bridge: bridgeStatus,
         });
         break;
       }
       case "apply-settings": {
         const next = await saveSettings(msg.settings || {});
         sendResponse({ ok: true, settings: next });
+        break;
+      }
+      case "bridge-reconnect": {
+        bridge.connect();
+        sendResponse({ ok: true });
+        break;
+      }
+      case "bridge-disconnect": {
+        bridge.disconnect();
+        sendResponse({ ok: true });
+        break;
+      }
+      case "bridge-get-status": {
+        sendResponse({ ok: true, status: bridgeStatus, ready: bridge.isReady(), hostInfo: bridge.getHostInfo() });
         break;
       }
       default:
@@ -263,7 +359,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   return true; // async
 });
 
-// --- External messages (web pages / MCP clients via externally_connectable) ---
+// --------------------------------------------------------------------------- //
+// External messages (web pages / MCP clients via externally_connectable)
+// --------------------------------------------------------------------------- //
 // Protocol: a web page calls
 //   chrome.runtime.sendMessage(EXTENSION_ID, { type: "mcp", payload: <json-rpc> }, callback)
 // and receives { ok: true, response: <json-rpc> } (or { ok: true, accepted: true } for notifications).

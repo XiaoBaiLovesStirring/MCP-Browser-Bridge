@@ -10,6 +10,23 @@ async function refresh() {
     if (r && r.ok) {
       $("statusText").textContent = `${t("pop.active")} · ${r.toolCount} ${t("pop.tools")}`;
       $("meta").textContent = `v${r.version} · ${r.extensionId ? r.extensionId.slice(0, 16) + "…" : ""}`;
+      // Bridge status line
+      const line = $("bridgeLine");
+      const dot = $("bridgeDot");
+      const txt = $("bridgeText");
+      const bridge = r.bridge;
+      if (bridge) {
+        line.hidden = false;
+        if (bridge.connected) {
+          dot.className = "bridge-dot on";
+          txt.textContent = `${t("pop.bridgeOn")}${bridge.hostInfo ? ` (${bridge.hostInfo.host}:${bridge.hostInfo.port})` : ""}`;
+        } else {
+          dot.className = "bridge-dot off";
+          txt.textContent = t("pop.bridgeOff");
+        }
+      } else {
+        line.hidden = true;
+      }
     }
   } catch (e) {
     $("statusText").textContent = "Error: " + e.message;

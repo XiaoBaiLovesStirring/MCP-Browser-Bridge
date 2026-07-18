@@ -162,3 +162,53 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); box-sha
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(-4px); }
 .toast.ok { border-color: var(--ok); }
 .toast.err { border-color: var(--danger); }
+
+/* ---- native host bridge card ---- */
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.btn.small { padding: 5px 10px; font-size: 12px; }
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: 12.5px;
+}
+.status-pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.status-pill[data-state="connected"] .dot { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+.status-pill[data-state="connected"] { color: var(--ok); }
+.status-pill[data-state="error"] .dot { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+.status-pill[data-state="error"] { color: var(--danger); }
+
+.bridge-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.bridge-label { font-size: 12.5px; color: var(--muted); font-weight: 500; min-width: 60px; }
+
+.bridge-endpoints {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+.bridge-ep-row {
+  display: grid;
+  grid-template-columns: 140px 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+.bridge-ep-label { font-size: 12px; color: var(--muted); }
+.bridge-ep-row input {
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  padding: 6px 9px;
+}
