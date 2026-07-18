@@ -12,15 +12,15 @@
       <img src="../icons/icon48.png" alt="" class="logo" />
       <div>
         <div class="title">MCP-Browser-Bridge</div>
-        <div class="status" id="statusText">Checking…</div>
+        <div class="status" id="statusText">Active</div>
       </div>
-      <span class="dot" id="statusDot"></span>
+      <span class="dot connected"></span>
     </header>
 
-    <div class="endpoint" id="endpoint">—</div>
+    <div class="meta" id="meta">—</div>
 
     <div class="actions">
-      <button id="reconnectBtn" class="btn primary">Reconnect</button>
+      <button id="consoleBtn" class="btn primary">MCP Console</button>
       <button id="optionsBtn" class="btn">Settings</button>
     </div>
 
@@ -31,12 +31,6 @@
         <button id="searchBtn" class="btn small primary">Search</button>
       </div>
       <pre id="testOutput" class="output" hidden></pre>
-    </div>
-
-    <div class="section">
-      <div class="section-title">Current tab</div>
-      <button id="extractBtn" class="btn">Extract current page</button>
-      <pre id="extractOutput" class="output" hidden></pre>
     </div>
   </div>
   <script type="module" src="popup.js"></script>

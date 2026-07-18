@@ -1,9 +1,8 @@
 {
   "manifest_version": 3,
   "name": "MCP-Browser-Bridge",
-  "version": "0.2.0",
-  "description": "Expose your favorite search engines and live browser tabs as MCP tools. Built-in MCP protocol parsing, Streamable HTTP + legacy SSE transports, AI can execute page JS to operate any website. Zero external dependencies.",
-  "default_locale": "en",
+  "version": "0.3.0",
+  "description": "Pure browser extension exposing search engines and live tabs as MCP tools. AI can operate web pages via JS. Zero dependencies.",
   "minimum_chrome_version": "114",
   "icons": {
     "16": "icons/icon16.png",
@@ -31,9 +30,7 @@
     "storage",
     "tabs",
     "activeTab",
-    "scripting",
-    "nativeMessaging",
-    "tabCapture"
+    "scripting"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -46,9 +43,12 @@
       "all_frames": false
     }
   ],
+  "externally_connectable": {
+    "matches": ["<all_urls>"]
+  },
   "web_accessible_resources": [
     {
-      "resources": ["options/options.html", "popup/popup.html"],
+      "resources": ["mcp/mcp.html", "options/options.html", "popup/popup.html"],
       "matches": ["<all_urls>"]
     }
   ]

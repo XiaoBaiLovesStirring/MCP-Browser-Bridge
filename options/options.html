@@ -12,47 +12,16 @@
       <img src="../icons/icon48.png" alt="" class="brand-icon" />
       <div>
         <h1>MCP-Browser-Bridge</h1>
-        <p class="subtitle">Configure search engines, transport, and the local MCP server port.</p>
+        <p class="subtitle">Configure search engines and extraction behavior. Pure browser extension, no setup required.</p>
       </div>
     </div>
-    <div class="status-pill" id="statusPill" data-state="unknown">
-      <span class="dot"></span>
-      <span class="status-text">Checking…</span>
-    </div>
+    <button id="openConsole" class="btn primary">Open MCP Console</button>
   </header>
 
   <main class="layout">
-    <!-- Server / transport section -->
     <section class="card">
-      <h2>Server</h2>
-      <p class="hint">
-        The bridge runs a local server via a native messaging host. MCP clients
-        (Claude Desktop, etc.) connect to <code id="endpointHint">http://127.0.0.1:8765</code>.
-      </p>
+      <h2>Behavior</h2>
       <div class="grid two">
-        <label class="field">
-          <span>Bind host</span>
-          <input type="text" id="host" placeholder="127.0.0.1" />
-        </label>
-        <label class="field">
-          <span>Port</span>
-          <input type="number" id="port" min="1024" max="65535" placeholder="8765" />
-        </label>
-      </div>
-      <div class="field">
-        <span>Transport</span>
-        <div class="segmented" id="transport">
-          <button type="button" data-value="streamable" class="seg">Streamable HTTP</button>
-          <button type="button" data-value="sse" class="seg">Legacy SSE</button>
-          <button type="button" data-value="both" class="seg active">Both</button>
-        </div>
-        <small class="muted">Streamable HTTP = MCP 2025-06-18 (recommended; works with Claude Desktop, Cursor, Cline, Windsurf). Legacy SSE = MCP 2024-11-05 (older clients). Both = enable all endpoints for maximum compatibility.</small>
-      </div>
-      <div class="grid two">
-        <label class="field checkbox">
-          <input type="checkbox" id="autoStart" />
-          <span>Auto-start bridge on browser startup</span>
-        </label>
         <label class="field">
           <span>Tab lifecycle after extraction</span>
           <select id="tabLifecycle">
@@ -60,25 +29,23 @@
             <option value="keep">Keep tab open</option>
           </select>
         </label>
+        <label class="field">
+          <span>Max results per search</span>
+          <input type="number" id="maxResults" min="1" max="100" />
+        </label>
       </div>
       <div class="grid two">
         <label class="field">
           <span>Page load timeout (ms)</span>
           <input type="number" id="pageLoadTimeoutMs" min="2000" max="60000" step="500" />
         </label>
-        <label class="field">
-          <span>Max results per search</span>
-          <input type="number" id="maxResults" min="1" max="100" />
-        </label>
-      </div>
-      <div class="actions">
-        <button id="reconnectBtn" class="btn secondary">Reconnect</button>
-        <button id="disconnectBtn" class="btn ghost">Disconnect</button>
-        <button id="saveServerBtn" class="btn primary">Save &amp; Apply</button>
+        <div class="field">
+          <span>&nbsp;</span>
+          <button id="saveBehaviorBtn" class="btn primary">Save</button>
+        </div>
       </div>
     </section>
 
-    <!-- Search engines section -->
     <section class="card">
       <div class="card-head">
         <h2>Search engines</h2>
@@ -93,7 +60,6 @@
     </section>
   </main>
 
-  <!-- Engine editor modal -->
   <div class="modal-backdrop" id="modal" hidden>
     <div class="modal">
       <h3 id="modalTitle">Add engine</h3>
@@ -137,7 +103,6 @@
   </div>
 
   <div class="toast" id="toast" hidden></div>
-
   <script type="module" src="options.js"></script>
 </body>
 </html>

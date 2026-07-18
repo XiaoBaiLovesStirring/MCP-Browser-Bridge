@@ -1,86 +1,31 @@
 // options/options.js
 import {
-  loadEngines, saveEngines, resetEngines, validateEngine, engineIdFromName, DEFAULT_ENGINES,
+  loadEngines, saveEngines, resetEngines, validateEngine, engineIdFromName,
 } from "../lib/search-engines.js";
-import { loadSettings, saveSettings, validatePort, VALID_TRANSPORTS } from "../lib/settings.js";
+import { loadSettings, saveSettings } from "../lib/settings.js";
 
 const $ = (id) => document.getElementById(id);
 
 let engines = [];
-let editingIndex = -1; // -1 = adding new
+let editingIndex = -1;
 
-// ---------- Status polling ----------
-function setStatusUI(connected, status) {
-  const pill = $("statusPill");
-  const state = connected ? "connected" : (status && status.state) || "unknown";
-  pill.dataset.state = state;
-  pill.querySelector(".status-text").textContent = connected
-    ? "Connected"
-    : (status && status.detail) ? status.detail : (status && status.state) || "Idle";
-}
-
-async function refreshStatus() {
-  try {
-    const resp = await chrome.runtime.sendMessage({ type: "get-status" });
-    if (resp && resp.ok) setStatusUI(resp.connected, resp.status);
-  } catch (e) {
-    setStatusUI(false, { state: "error", detail: e.message });
-  }
-}
-
-// ---------- Settings form ----------
-async function loadSettingsForm() {
+async function loadBehaviorForm() {
   const s = await loadSettings();
-  $("host").value = s.host;
-  $("port").value = s.port;
+  $("tabLifecycle").value = s.tabLifecycle;
   $("pageLoadTimeoutMs").value = s.pageLoadTimeoutMs;
   $("maxResults").value = s.maxResults;
-  $("autoStart").checked = !!s.autoStart;
-  $("tabLifecycle").value = s.tabLifecycle;
-  setTransport(s.transport);
-  updateEndpointHint(s.host, s.port);
 }
 
-function setTransport(value) {
-  document.querySelectorAll("#transport .seg").forEach((b) => {
-    b.classList.toggle("active", b.dataset.value === value);
-  });
-}
-
-function getTransport() {
-  const active = document.querySelector("#transport .seg.active");
-  return active ? active.dataset.value : "sse";
-}
-
-function updateEndpointHint(host, port) {
-  $("endpointHint").textContent = `http://${host}:${port}`;
-}
-
-async function applySettings() {
-  const port = Number($("port").value);
-  const [ok, reason] = validatePort(port);
-  if (!ok) return toast(reason, "err");
-
+async function saveBehavior() {
   const settings = {
-    host: $("host").value.trim() || "127.0.0.1",
-    port,
-    transport: getTransport(),
-    autoStart: $("autoStart").checked,
     tabLifecycle: $("tabLifecycle").value,
     pageLoadTimeoutMs: Number($("pageLoadTimeoutMs").value) || 15000,
     maxResults: Number($("maxResults").value) || 20,
   };
-  const resp = await chrome.runtime.sendMessage({ type: "apply-settings", settings });
-  if (resp && resp.ok) {
-    updateEndpointHint(settings.host, settings.port);
-    toast("Settings saved & applied", "ok");
-    refreshStatus();
-  } else {
-    toast("Failed to apply settings", "err");
-  }
+  await chrome.runtime.sendMessage({ type: "apply-settings", settings });
+  toast("Saved", "ok");
 }
 
-// ---------- Engines UI ----------
 function renderEngines() {
   const list = $("engineList");
   list.innerHTML = "";
@@ -152,7 +97,6 @@ function saveEngineFromModal() {
     engines[editingIndex] = eng;
   } else {
     eng.id = engineIdFromName(eng.name);
-    // Avoid id collisions.
     let n = 1;
     while (engines.find((e) => e.id === eng.id)) {
       eng.id = `${engineIdFromName(eng.name)}-${n++}`;
@@ -161,7 +105,7 @@ function saveEngineFromModal() {
   }
   closeModal();
   renderEngines();
-  toast("Engine saved (remember to click \"Save engines\")", "ok");
+  toast("Engine saved (click \"Save engines\" to persist)", "ok");
 }
 
 async function persistEngines() {
@@ -175,7 +119,6 @@ async function doResetEngines() {
   toast("Engines reset to defaults", "ok");
 }
 
-// ---------- Toast ----------
 let toastTimer = null;
 function toast(msg, kind) {
   const t = $("toast");
@@ -186,40 +129,15 @@ function toast(msg, kind) {
   toastTimer = setTimeout(() => { t.classList.remove("show"); }, 2200);
 }
 
-// ---------- Wire up ----------
 function bindEvents() {
-  // Transport segmented control
-  document.querySelectorAll("#transport .seg").forEach((btn) => {
-    btn.addEventListener("click", () => setTransport(btn.dataset.value));
-  });
-
-  $("port").addEventListener("input", () => {
-    updateEndpointHint($("host").value || "127.0.0.1", $("port").value || "8765");
-  });
-  $("host").addEventListener("input", () => {
-    updateEndpointHint($("host").value || "127.0.0.1", $("port").value || "8765");
-  });
-
-  $("saveServerBtn").addEventListener("click", applySettings);
-  $("reconnectBtn").addEventListener("click", async () => {
-    const r = await chrome.runtime.sendMessage({ type: "reconnect" });
-    if (r && r.ok) toast("Reconnected", "ok");
-    else toast("Reconnect failed", "err");
-    refreshStatus();
-  });
-  $("disconnectBtn").addEventListener("click", async () => {
-    await chrome.runtime.sendMessage({ type: "disconnect" });
-    toast("Disconnected", "ok");
-    refreshStatus();
-  });
-
+  $("openConsole").addEventListener("click", () => chrome.tabs.create({ url: chrome.runtime.getURL("mcp/mcp.html") }));
+  $("saveBehaviorBtn").addEventListener("click", saveBehavior);
   $("addEngineBtn").addEventListener("click", () => openModal(-1));
   $("modalCancel").addEventListener("click", closeModal);
   $("modalSave").addEventListener("click", saveEngineFromModal);
   $("saveEnginesBtn").addEventListener("click", persistEngines);
   $("resetEnginesBtn").addEventListener("click", doResetEngines);
 
-  // Event delegation for engine list
   $("engineList").addEventListener("click", (e) => {
     const btn = e.target.closest("button[data-act]");
     if (btn) {
@@ -239,7 +157,6 @@ function bindEvents() {
     }
   });
 
-  // Close modal on backdrop click
   $("modal").addEventListener("click", (e) => {
     if (e.target === $("modal")) closeModal();
   });
@@ -247,11 +164,9 @@ function bindEvents() {
 
 async function init() {
   bindEvents();
-  await loadSettingsForm();
+  await loadBehaviorForm();
   engines = await loadEngines();
   renderEngines();
-  refreshStatus();
-  setInterval(refreshStatus, 3000);
 }
 
 init();

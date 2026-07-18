@@ -1,9 +1,12 @@
 // background/background.js
-// Service worker: wires up the MCP server, the native-host bridge, and the
-// search/page-extraction pipeline. Exposes status + control to popup/options.
+// Service worker for the pure browser extension.
+// Owns the McpServer instance and routes MCP JSON-RPC requests from:
+//   1. Internal callers (popup, options, MCP console) via chrome.runtime.onMessage
+//   2. External web pages / MCP clients via chrome.runtime.onMessageExternal
+//      (enabled by manifest's externally_connectable)
+// No native messaging, no Python host, no external dependencies.
 
 import { McpServer, textContent, errorContent } from "../lib/mcp-protocol.js";
-import { Bridge } from "../lib/bridge.js";
 import { loadEngines, enabledEngines, findEngine } from "../lib/search-engines.js";
 import { loadSettings, saveSettings } from "../lib/settings.js";
 import {
@@ -11,22 +14,20 @@ import {
   evalJsInTab, evalJsOnUrl, evalJsCurrent, listTabs,
 } from "../lib/search-runner.js";
 
-const SERVER_INFO = { name: "mcp-browser-bridge", version: "0.2.0" };
+const SERVER_INFO = { name: "mcp-browser-bridge", version: "0.3.0" };
 
-let bridge = null;
-let statusCache = { state: "init", detail: "starting", ts: Date.now() };
+let server = null;
+let extensionId = null;
 
-/** Build the MCP server with all tools/resources registered. */
 function buildServer() {
-  const server = new McpServer(SERVER_INFO);
+  const s = new McpServer(SERVER_INFO);
 
-  // --- Tool: list_engines ---
-  server.registerTool("list_engines", {
+  s.registerTool("list_engines", {
     description: "List configured search engines (only enabled ones by default).",
     inputSchema: {
       type: "object",
       properties: {
-        includeDisabled: { type: "boolean", default: false, description: "Include disabled engines in the list." },
+        includeDisabled: { type: "boolean", default: false },
       },
     },
   }, async (args) => {
@@ -37,14 +38,13 @@ function buildServer() {
     })), null, 2));
   });
 
-  // --- Tool: search ---
-  server.registerTool("search", {
-    description: "Run a web search using a configured search engine. Opens a new background tab, extracts results, and returns them. Each result has title, url, and snippet.",
+  s.registerTool("search", {
+    description: "Run a web search using a configured engine. Opens a background tab, extracts results (title/url/snippet), closes the tab.",
     inputSchema: {
       type: "object",
       properties: {
-        query: { type: "string", description: "The search query." },
-        engine: { type: "string", description: "Engine id (e.g. google). Defaults to the first enabled engine." },
+        query: { type: "string" },
+        engine: { type: "string", description: "Engine id. Defaults to first enabled engine." },
       },
       required: ["query"],
     },
@@ -66,14 +66,11 @@ function buildServer() {
     }
   });
 
-  // --- Tool: fetch_page ---
-  server.registerTool("fetch_page", {
-    description: "Open a URL in a background tab, extract the page text and all links, and return them. Useful for reading a page discovered via search.",
+  s.registerTool("fetch_page", {
+    description: "Open a URL in a background tab, extract page text and all links, close the tab.",
     inputSchema: {
       type: "object",
-      properties: {
-        url: { type: "string", description: "The absolute URL to fetch." },
-      },
+      properties: { url: { type: "string" } },
       required: ["url"],
     },
   }, async (args) => {
@@ -87,9 +84,8 @@ function buildServer() {
     }
   });
 
-  // --- Tool: get_current_page ---
-  server.registerTool("get_current_page", {
-    description: "Extract text and links from the currently active tab in the user's browser. No new tab is opened.",
+  s.registerTool("get_current_page", {
+    description: "Extract text and links from the currently active tab. No new tab is opened.",
     inputSchema: { type: "object", properties: {} },
   }, async () => {
     const settings = await loadSettings();
@@ -101,47 +97,29 @@ function buildServer() {
     }
   });
 
-  // --- Tool: bridge_status ---
-  server.registerTool("bridge_status", {
-    description: "Return the current status of the MCP-Browser-Bridge (native host connection, configured port, transport).",
-    inputSchema: { type: "object", properties: {} },
-  }, async () => {
-    const settings = await loadSettings();
-    return textContent(JSON.stringify({
-      connected: bridge ? bridge.isReady() : false,
-      status: statusCache,
-      settings: { port: settings.port, transport: settings.transport, host: settings.host },
-    }, null, 2));
-  });
-
-  // --- Tool: list_tabs ---
-  server.registerTool("list_tabs", {
-    description: "List all open browser tabs (id, url, title, active). Use this to pick a target tab for eval_js_tab.",
+  s.registerTool("list_tabs", {
+    description: "List all open browser tabs (id, url, title, active). Use to pick a target for eval_js_tab.",
     inputSchema: {
       type: "object",
       properties: {
-        currentWindowOnly: { type: "boolean", default: false, description: "Only list tabs in the current window." },
+        currentWindowOnly: { type: "boolean", default: false },
       },
     },
   }, async (args) => {
-    let tabs;
-    if (args && args.currentWindowOnly) {
-      tabs = await chrome.tabs.query({ currentWindow: true });
-    } else {
-      tabs = await listTabs();
-    }
+    const tabs = args && args.currentWindowOnly
+      ? await chrome.tabs.query({ currentWindow: true })
+      : await listTabs();
     return textContent(JSON.stringify(tabs, null, 2));
   });
 
-  // --- Tool: eval_js ---
-  server.registerTool("eval_js", {
-    description: "Open a URL in a new background tab, wait for it to load, then execute arbitrary JavaScript in the page and return the result. This lets you operate the page as a real user would: click buttons, fill forms, read SPA-rendered DOM, scrape dynamic content, etc. The tab is closed afterwards unless tabLifecycle is 'keep'.",
+  s.registerTool("eval_js", {
+    description: "Open a URL in a new background tab, wait for load, execute arbitrary JavaScript, return the result, close the tab. Lets AI operate the page: click, fill forms, read SPA-rendered DOM, parse page JS state.",
     inputSchema: {
       type: "object",
       properties: {
-        url: { type: "string", description: "Absolute URL to open in the new tab." },
-        code: { type: "string", description: "JavaScript code to run. Treated as the body of an async function: you may use `await`, and the last expression's resolved value is returned. Examples: `return document.title;` or `const btn = document.querySelector('button'); btn.click(); await new Promise(r => setTimeout(r, 500)); return document.body.innerText;`" },
-        world: { type: "string", enum: ["ISOLATED", "MAIN"], default: "ISOLATED", description: "ISOLATED (default): runs in the extension's isolated world, safe from page CSP, full DOM access but cannot read page JS globals. MAIN: runs in the page's main world, can read/modify page JS variables and SPA framework state (React/Vue/jQuery), but subject to the page's CSP." },
+        url: { type: "string" },
+        code: { type: "string", description: "Async function body. May use await. Last expression's resolved value is returned." },
+        world: { type: "string", enum: ["ISOLATED", "MAIN"], default: "ISOLATED" },
       },
       required: ["url", "code"],
     },
@@ -157,13 +135,12 @@ function buildServer() {
     }
   });
 
-  // --- Tool: eval_js_current ---
-  server.registerTool("eval_js_current", {
-    description: "Execute arbitrary JavaScript in the currently active browser tab (the page the user is looking at). No new tab is opened; the page stays open. Use this to operate on or parse the page the user is currently viewing.",
+  s.registerTool("eval_js_current", {
+    description: "Execute arbitrary JavaScript in the currently active tab. No new tab is opened.",
     inputSchema: {
       type: "object",
       properties: {
-        code: { type: "string", description: "JavaScript code to run (async function body). See eval_js for details." },
+        code: { type: "string" },
         world: { type: "string", enum: ["ISOLATED", "MAIN"], default: "ISOLATED" },
       },
       required: ["code"],
@@ -178,14 +155,13 @@ function buildServer() {
     }
   });
 
-  // --- Tool: eval_js_tab ---
-  server.registerTool("eval_js_tab", {
-    description: "Execute arbitrary JavaScript in a specific open tab by its id (use list_tabs to discover tab ids). Lets you operate on or parse any already-open page without opening a new one.",
+  s.registerTool("eval_js_tab", {
+    description: "Execute arbitrary JavaScript in a specific open tab by id (from list_tabs).",
     inputSchema: {
       type: "object",
       properties: {
-        tabId: { type: "integer", description: "The target tab id (from list_tabs)." },
-        code: { type: "string", description: "JavaScript code to run (async function body). See eval_js for details." },
+        tabId: { type: "integer" },
+        code: { type: "string" },
         world: { type: "string", enum: ["ISOLATED", "MAIN"], default: "ISOLATED" },
       },
       required: ["tabId", "code"],
@@ -201,8 +177,28 @@ function buildServer() {
     }
   });
 
-  // --- Resource: engine list ---
-  server.registerResource("mcpbb://engines", {
+  s.registerTool("extension_status", {
+    description: "Return extension status: version, tool count, configured engines, current settings.",
+    inputSchema: { type: "object", properties: {} },
+  }, async () => {
+    const settings = await loadSettings();
+    const engines = await loadEngines();
+    return textContent(JSON.stringify({
+      active: true,
+      version: SERVER_INFO.version,
+      extensionId,
+      toolCount: s.listTools().length,
+      tools: s.listTools().map((t) => t.name),
+      enabledEngines: enabledEngines(engines).map((e) => e.id),
+      settings: {
+        tabLifecycle: settings.tabLifecycle,
+        pageLoadTimeoutMs: settings.pageLoadTimeoutMs,
+        maxResults: settings.maxResults,
+      },
+    }, null, 2));
+  });
+
+  s.registerResource("mcpbb://engines", {
     description: "Configured search engines (JSON).",
     mimeType: "application/json",
   }, async () => {
@@ -210,71 +206,54 @@ function buildServer() {
     return { contents: [{ uri: "mcpbb://engines", mimeType: "application/json", text: JSON.stringify(engines) }] };
   });
 
-  return server;
+  return s;
 }
 
-/** Initialize the bridge and connect to the native host. */
-async function initBridge() {
-  if (!bridge) {
-    bridge = new Bridge();
-    bridge.onStatus((s) => { statusCache = s; });
-    bridge.setServer(buildServer());
-  }
-  const settings = await loadSettings();
-  if (settings.autoStart) {
-    await bridge.connect();
-    // Tell the host which port/transport to serve.
-    bridge.reconfigure({ host: settings.host, port: settings.port, transport: settings.transport });
-  }
+server = buildServer();
+extensionId = chrome.runtime.id;
+
+/** Handle an MCP JSON-RPC payload. Returns the JSON-RPC response (or null for notifications). */
+async function handleMcpPayload(payload) {
+  return await server.handleMessage(payload, {});
 }
 
-// --- Lifecycle hooks ---
-chrome.runtime.onInstalled.addListener(async () => {
-  await initBridge();
-});
-
-chrome.runtime.onStartup.addListener(async () => {
-  await initBridge();
-});
-
-// Also try to init when the service worker wakes for the first time
-// (covers the case where the browser was already running with the extension).
-initBridge().catch((e) => {
-  statusCache = { state: "error", detail: `init failed: ${e.message}`, ts: Date.now() };
-});
-
-// --- Message API for options/popup pages ---
+// --- Internal messages (popup / options / MCP console) ---
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   (async () => {
-    switch (msg && msg.type) {
+    if (!msg || !msg.type) {
+      sendResponse({ ok: false, error: "missing type" });
+      return;
+    }
+    switch (msg.type) {
+      case "mcp-request": {
+        // Internal MCP invocation: { type: "mcp-request", payload: <json-rpc> }
+        try {
+          const response = await handleMcpPayload(msg.payload);
+          sendResponse({ ok: true, response });
+        } catch (e) {
+          sendResponse({ ok: false, error: e.message });
+        }
+        break;
+      }
+      case "list-tools": {
+        sendResponse({ ok: true, tools: server.listTools() });
+        break;
+      }
       case "get-status": {
-        sendResponse({ ok: true, status: statusCache, connected: bridge ? bridge.isReady() : false });
-        break;
-      }
-      case "reconnect": {
-        if (!bridge) { bridge = new Bridge(); bridge.onStatus((s) => { statusCache = s; }); bridge.setServer(buildServer()); }
-        await bridge.connect();
-        const s = await loadSettings();
-        bridge.reconfigure({ host: s.host, port: s.port, transport: s.transport });
-        sendResponse({ ok: true, status: statusCache });
-        break;
-      }
-      case "disconnect": {
-        if (bridge) bridge.disconnect();
-        sendResponse({ ok: true, status: statusCache });
+        const settings = await loadSettings();
+        sendResponse({
+          ok: true,
+          active: true,
+          version: SERVER_INFO.version,
+          extensionId,
+          toolCount: server.listTools().length,
+          settings,
+        });
         break;
       }
       case "apply-settings": {
         const next = await saveSettings(msg.settings || {});
-        if (bridge && bridge.isReady()) {
-          bridge.reconfigure({ host: next.host, port: next.port, transport: next.transport });
-        }
         sendResponse({ ok: true, settings: next });
-        break;
-      }
-      case "get-settings": {
-        const s = await loadSettings();
-        sendResponse({ ok: true, settings: s });
         break;
       }
       default:
@@ -283,3 +262,31 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   })();
   return true; // async
 });
+
+// --- External messages (web pages / MCP clients via externally_connectable) ---
+// Protocol: a web page calls
+//   chrome.runtime.sendMessage(EXTENSION_ID, { type: "mcp", payload: <json-rpc> }, callback)
+// and receives { ok: true, response: <json-rpc> } (or { ok: true, accepted: true } for notifications).
+chrome.runtime.onMessageExternal.addListener((msg, sender, sendResponse) => {
+  (async () => {
+    if (!msg || msg.type !== "mcp") {
+      sendResponse({ ok: false, error: "expected { type: 'mcp', payload: <json-rpc> }" });
+      return;
+    }
+    try {
+      const response = await handleMcpPayload(msg.payload);
+      if (response === null) {
+        // Notification (no id): acknowledge, no JSON-RPC body.
+        sendResponse({ ok: true, accepted: true });
+      } else {
+        sendResponse({ ok: true, response });
+      }
+    } catch (e) {
+      sendResponse({ ok: false, error: e.message });
+    }
+  })();
+  return true; // async
+});
+
+// Mark the service worker as ready.
+console.log(`[mcp-browser-bridge] service worker ready, extensionId=${extensionId}`);

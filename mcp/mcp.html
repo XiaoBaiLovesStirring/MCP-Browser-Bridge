@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MCP Console · MCP-Browser-Bridge</title>
+  <link rel="stylesheet" href="mcp.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <img src="../icons/icon48.png" alt="" class="brand-icon" />
+      <div>
+        <h1>MCP Console</h1>
+        <p class="subtitle">Invoke any tool directly, or connect an external MCP client using the extension ID below.</p>
+      </div>
+    </div>
+    <div class="id-pill" id="idPill">Extension ID: …</div>
+  </header>
+
+  <main class="layout">
+    <section class="card">
+      <h2>Extension ID</h2>
+      <p class="hint">Web-based MCP clients call <code>chrome.runtime.sendMessage(EXTENSION_ID, { type: "mcp", payload: &lt;json-rpc&gt; }, callback)</code> to invoke tools. Copy this ID into your client config.</p>
+      <div class="row">
+        <input type="text" id="extId" readonly />
+        <button id="copyId" class="btn primary">Copy</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Tools</h2>
+      <div class="row">
+        <select id="toolSelect"></select>
+        <button id="refreshTools" class="btn">Refresh</button>
+      </div>
+      <div id="toolDesc" class="tool-desc"></div>
+      <label class="field">
+        <span>Arguments (JSON)</span>
+        <textarea id="toolArgs" rows="6" placeholder='{ "query": "example" }'></textarea>
+      </label>
+      <div class="actions">
+        <button id="callTool" class="btn primary">Call tool</button>
+        <button id="clearOutput" class="btn ghost">Clear</button>
+      </div>
+      <pre id="output" class="output" hidden></pre>
+    </section>
+
+    <section class="card">
+      <h2>Raw JSON-RPC</h2>
+      <p class="hint">Send an arbitrary MCP / JSON-RPC 2.0 request.</p>
+      <label class="field">
+        <span>Request</span>
+        <textarea id="rawInput" rows="8" placeholder='{"jsonrpc":"2.0","id":1,"method":"tools/list"}'></textarea>
+      </label>
+      <div class="actions">
+        <button id="sendRaw" class="btn primary">Send</button>
+      </div>
+      <pre id="rawOutput" class="output" hidden></pre>
+    </section>
+
+    <section class="card">
+      <h2>Sample client snippet</h2>
+      <pre class="snippet">const EXTENSION_ID = "<span id="idInSnippet">…</span>";
+chrome.runtime.sendMessage(
+  EXTENSION_ID,
+  { type: "mcp", payload: { jsonrpc: "2.0", id: 1, method: "tools/list" } },
+  (resp) => console.log(resp);
+);</pre>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" hidden></div>
+  <script type="module" src="mcp.js"></script>
+</body>
+</html>
