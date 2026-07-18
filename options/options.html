@@ -12,7 +12,7 @@
       <img src="../icons/icon48.png" alt="" class="brand-icon" />
       <div>
         <h1>MCP-Browser-Bridge</h1>
-        <p class="subtitle" data-i18n="opt.subtitle">Configure search engines and extraction behavior. Pure browser extension, no setup required.</p>
+        <p class="subtitle" data-i18n="opt.subtitle">Configure search engines and extraction behavior. Pure extension, no setup required.</p>
       </div>
     </div>
     <div class="topbar-right">
@@ -49,69 +49,6 @@
           <span>&nbsp;</span>
           <button id="saveBehaviorBtn" class="btn primary" data-i18n="opt.save">Save</button>
         </div>
-      </div>
-    </section>
-
-    <section class="card">
-      <h2 data-i18n="opt.bridgeTitle">Native host (desktop MCP clients)</h2>
-      <p class="hint" data-i18n="opt.bridgeHint">Run the bundled Node.js host to expose the extension on a local port. Desktop MCP clients (Claude Desktop, Cursor, etc.) connect to this URL.</p>
-      <div class="grid two">
-        <label class="field checkbox">
-          <input type="checkbox" id="hostEnabled" />
-          <span data-i18n="opt.bridgeEnabled">Auto-connect on startup</span>
-        </label>
-        <div class="field">
-          <span data-i18n="opt.bridgeTransport">Transport</span>
-          <select id="transport">
-            <option value="both">both (Streamable HTTP + SSE)</option>
-            <option value="http">http (Streamable HTTP only)</option>
-            <option value="sse">sse (Legacy SSE only)</option>
-          </select>
-        </div>
-      </div>
-      <div class="grid two">
-        <label class="field">
-          <span data-i18n="opt.bridgeHost">Host</span>
-          <input type="text" id="host" placeholder="127.0.0.1" />
-        </label>
-        <label class="field">
-          <span data-i18n="opt.bridgePort">Port</span>
-          <input type="number" id="port" min="1" max="65535" placeholder="7777" />
-        </label>
-      </div>
-      <div class="actions">
-        <button id="saveBridgeBtn" class="btn primary" data-i18n="opt.save">Save</button>
-        <button id="reconnectBtn" class="btn" data-i18n="opt.bridgeReconnect">Reconnect</button>
-        <button id="disconnectBtn" class="btn ghost" data-i18n="opt.bridgeDisconnect">Disconnect</button>
-      </div>
-
-      <div class="bridge-status" id="bridgeStatusBox">
-        <div class="bridge-status-row">
-          <span class="bridge-label" data-i18n="opt.bridgeStatus">Bridge status</span>
-          <span class="status-pill" id="bridgePill" data-state="disconnected">
-            <span class="dot"></span>
-            <span id="bridgeStateText" data-i18n="opt.bridgeDisconnected">Disconnected</span>
-          </span>
-        </div>
-        <div class="bridge-endpoints" id="bridgeEndpoints">
-          <div class="bridge-ep-row">
-            <span class="bridge-ep-label" data-i18n="opt.bridgeStreamableHttp">Streamable HTTP</span>
-            <input type="text" id="epHttp" readonly placeholder="http://127.0.0.1:7777/mcp" />
-            <button class="btn small" data-ep="http" data-i18n="opt.bridgeCopy">Copy</button>
-          </div>
-          <div class="bridge-ep-row">
-            <span class="bridge-ep-label" data-i18n="opt.bridgeSse">Legacy SSE</span>
-            <input type="text" id="epSse" readonly placeholder="http://127.0.0.1:7777/sse" />
-            <button class="btn small" data-ep="sse" data-i18n="opt.bridgeCopy">Copy</button>
-          </div>
-          <div class="bridge-ep-row">
-            <span class="bridge-ep-label" data-i18n="opt.bridgeHealth">Health check</span>
-            <input type="text" id="epHealth" readonly placeholder="http://127.0.0.1:7777/health" />
-            <button class="btn small" data-ep="health" data-i18n="opt.bridgeCopy">Copy</button>
-          </div>
-        </div>
-        <div class="bridge-error" id="bridgeErrorBox" hidden></div>
-        <p class="hint" data-i18n="opt.bridgeInstallHint">Not connected? Install the native host first: open native-host/ and run <code>node install_host.mjs --extension-id &lt;YOUR_EXTENSION_ID&gt;</code></p>
       </div>
     </section>
 

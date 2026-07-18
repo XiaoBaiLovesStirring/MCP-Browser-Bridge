@@ -1,60 +1,66 @@
 // popup/popup.js
-import { STRINGS } from "../lib/strings.js";
-import { initLang, t, applyTranslations, bindLangSwitch, getLang } from "../lib/i18n.js";
+// Toolbar popup for MCP-Browser-Bridge.
+// Shows extension status, quick search test, and language switcher.
 
-const $ = (id) => document.getElementById(id);
+import { initLang, t, applyTranslations, bindLangSwitch } from "../lib/i18n.js";
+import { STRINGS } from "../lib/strings.js";
+
+const $ = (sel) => document.getElementById(sel);
 
 async function refresh() {
   try {
     const r = await chrome.runtime.sendMessage({ type: "get-status" });
     if (r && r.ok) {
-      $("statusText").textContent = `${t("pop.active")} · ${r.toolCount} ${t("pop.tools")}`;
-      $("meta").textContent = `v${r.version} · ${r.extensionId ? r.extensionId.slice(0, 16) + "…" : ""}`;
-      // Bridge status line
-      const line = $("bridgeLine");
-      const dot = $("bridgeDot");
-      const txt = $("bridgeText");
-      const bridge = r.bridge;
-      if (bridge) {
-        line.hidden = false;
-        if (bridge.connected) {
-          dot.className = "bridge-dot on";
-          txt.textContent = `${t("pop.bridgeOn")}${bridge.hostInfo ? ` (${bridge.hostInfo.host}:${bridge.hostInfo.port})` : ""}`;
-        } else {
-          dot.className = "bridge-dot off";
-          txt.textContent = t("pop.bridgeOff");
-        }
-      } else {
-        line.hidden = true;
-      }
+      $("statusText").textContent = `${t("pop.active")} \u00b7 ${r.toolCount} ${t("pop.tools")}`;
+      $("meta").textContent = `v${r.version} \u00b7 ${r.extensionId ? r.extensionId.slice(0, 16) + "\u2026" : ""}`;
     }
   } catch (e) {
     $("statusText").textContent = "Error: " + e.message;
   }
 }
 
-$("consoleBtn").addEventListener("click", () => chrome.tabs.create({ url: chrome.runtime.getURL("mcp/mcp.html") }));
-$("optionsBtn").addEventListener("click", () => chrome.runtime.openOptionsPage());
-
-$("searchBtn").addEventListener("click", async () => {
-  const query = $("queryInput").value.trim();
+async function quickSearch() {
+  const query = $("searchInput").value.trim();
   if (!query) return;
-  const out = $("testOutput");
-  out.hidden = false;
-  out.textContent = "…";
+  const output = $("output");
+  output.hidden = false;
+  output.textContent = "Searching\u2026";
   try {
-    const payload = { jsonrpc: "2.0", id: Date.now(), method: "tools/call", params: { name: "search", arguments: { query } } };
-    const r = await chrome.runtime.sendMessage({ type: "mcp-request", payload });
-    if (!r || !r.ok) { out.textContent = "Error: " + (r ? r.error : "no response"); return; }
-    out.textContent = JSON.stringify(r.response, null, 2).slice(0, 4000);
+    const r = await chrome.runtime.sendMessage({
+      type: "mcp-request",
+      payload: {
+        jsonrpc: "2.0",
+        id: Date.now(),
+        method: "tools/call",
+        params: { name: "search", arguments: { query } },
+      },
+    });
+    if (r && r.ok && r.response) {
+      const result = r.response.result && r.response.result.content
+        ? r.response.result.content[0].text
+        : JSON.stringify(r.response, null, 2);
+      output.textContent = result;
+    } else {
+      output.textContent = "Error: " + (r && r.error ? r.error : "unknown");
+    }
   } catch (e) {
-    out.textContent = `Error: ${e.message}`;
+    output.textContent = "Error: " + e.message;
   }
-});
+}
+
+function bindEvents() {
+  bindLangSwitch();
+  $("searchBtn").addEventListener("click", quickSearch);
+  $("searchInput").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") quickSearch();
+  });
+  $("openOptionsBtn").addEventListener("click", () => chrome.runtime.openOptionsPage());
+  $("openConsoleBtn").addEventListener("click", () => chrome.tabs.create({ url: chrome.runtime.getURL("mcp/mcp.html") }));
+}
 
 (async () => {
   await initLang(STRINGS);
-  bindLangSwitch();
+  bindEvents();
   applyTranslations();
   refresh();
 })();

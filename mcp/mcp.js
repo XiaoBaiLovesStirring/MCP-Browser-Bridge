@@ -1,51 +1,14 @@
 // mcp/mcp.js
-// Built-in MCP console. Lets the user invoke any tool or send raw JSON-RPC.
-import { STRINGS } from "../lib/strings.js";
+// Built-in MCP console for MCP-Browser-Bridge.
+// List tools, invoke tools with JSON arguments, send raw JSON-RPC.
+// Uses chrome.runtime.sendMessage internally — no native host, no port.
+
 import { initLang, t, applyTranslations, bindLangSwitch } from "../lib/i18n.js";
+import { STRINGS } from "../lib/strings.js";
 
-const $ = (id) => document.getElementById(id);
+const $ = (sel) => document.getElementById(sel);
+
 let tools = [];
-
-function toast(msg, kind) {
-  const tt = $("toast");
-  tt.textContent = msg;
-  tt.className = "toast show " + (kind || "");
-  tt.hidden = false;
-  setTimeout(() => tt.classList.remove("show"), 2000);
-}
-
-async function loadTools() {
-  const resp = await chrome.runtime.sendMessage({ type: "list-tools" });
-  if (!resp || !resp.ok) {
-    toast(t("mcp.failedLoadTools"), "err");
-    return;
-  }
-  tools = resp.tools;
-  const sel = $("toolSelect");
-  sel.innerHTML = "";
-  tools.forEach((tl) => {
-    const opt = document.createElement("option");
-    opt.value = tl.name;
-    opt.textContent = tl.name;
-    sel.appendChild(opt);
-  });
-  renderToolDesc();
-}
-
-function renderToolDesc() {
-  const name = $("toolSelect").value;
-  const tl = tools.find((x) => x.name === name);
-  if (!tl) { $("toolDesc").textContent = ""; return; }
-  const required = (tl.inputSchema && tl.inputSchema.required) || [];
-  const props = (tl.inputSchema && tl.inputSchema.properties) || {};
-  const propLines = Object.keys(props).map((k) => {
-    const p = props[k];
-    const req = required.includes(k) ? " (required)" : "";
-    const def = p.default !== undefined ? ` [default: ${JSON.stringify(p.default)}]` : "";
-    return `  ${k}: ${p.type || "?"}${req}${def} — ${p.description || ""}`;
-  });
-  $("toolDesc").textContent = `${tl.description}\n\nArguments:\n${propLines.join("\n") || "  (none)"}`;
-}
 
 async function loadExtId() {
   const resp = await chrome.runtime.sendMessage({ type: "get-status" });
@@ -55,70 +18,117 @@ async function loadExtId() {
   }
 }
 
-async function refreshMcpBridge() {
-  // Compute endpoints from current settings.
-  let host = "127.0.0.1", port = 7777;
+async function loadTools() {
   try {
-    const st = await chrome.runtime.sendMessage({ type: "get-status" });
-    if (st && st.ok && st.settings) {
-      host = st.settings.host || "127.0.0.1";
-      port = st.settings.port || 7777;
-    }
-  } catch (_) {}
-  $("mcpEpHttp").value = `http://${host}:${port}/mcp`;
-  $("mcpEpSse").value = `http://${host}:${port}/sse`;
-
-  try {
-    const r = await chrome.runtime.sendMessage({ type: "bridge-get-status" });
-    if (!r || !r.ok) return;
-    const pill = $("mcpBridgePill");
-    const stateText = $("mcpBridgeState");
-    if (r.ready) {
-      pill.dataset.state = "connected";
-      stateText.textContent = t("mcp.bridgeConnected");
-    } else {
-      pill.dataset.state = r.status && r.status.error ? "error" : "disconnected";
-      stateText.textContent = t("mcp.bridgeDisconnected");
+    const resp = await chrome.runtime.sendMessage({ type: "list-tools" });
+    if (resp && resp.ok) {
+      tools = resp.tools;
+      renderToolSelect();
+      renderToolDesc();
     }
   } catch (e) {
-    // ignore
+    toast(t("mcp.failedLoadTools") + ": " + e.message, "err");
   }
+}
+
+function renderToolSelect() {
+  const sel = $("toolSelect");
+  sel.innerHTML = tools.map((t) => `<option value="${t.name}">${t.name}</option>`).join("");
+}
+
+function renderToolDesc() {
+  const name = $("toolSelect").value;
+  const tool = tools.find((t) => t.name === name);
+  if (!tool) {
+    $("toolDesc").innerHTML = "";
+    return;
+  }
+  const schema = tool.inputSchema;
+  const props = schema && schema.properties ? Object.entries(schema.properties).map(([k, v]) => {
+    const required = schema.required && schema.required.includes(k) ? " (required)" : "";
+    const type = v.type || "any";
+    const desc = v.description ? ` — ${v.description}` : "";
+    return `<div><strong>${k}</strong> <code>${type}</code>${required}${desc}</div>`;
+  }).join("") : "<em>no arguments</em>";
+  $("toolDesc").innerHTML = `<p class="tool-summary">${escapeHtml(tool.description || "")}</p><div class="schema">${props}</div>`;
 }
 
 async function callTool() {
   const name = $("toolSelect").value;
-  const argsText = $("toolArgs").value.trim() || "{}";
-  let args;
-  try { args = JSON.parse(argsText); }
-  catch (e) { toast(t("mcp.invalidArgsJson") + e.message, "err"); return; }
-
-  const out = $("output");
-  out.hidden = false;
-  out.textContent = t("mcp.calling").replace("{name}", name);
-  const payload = { jsonrpc: "2.0", id: Date.now(), method: "tools/call", params: { name, arguments: args } };
-  const resp = await chrome.runtime.sendMessage({ type: "mcp-request", payload });
-  if (!resp || !resp.ok) {
-    out.textContent = `${t("mcp.error")}${resp ? resp.error : t("mcp.noResponse")}`;
-    return;
+  let args = {};
+  const raw = $("toolArgs").value.trim();
+  if (raw) {
+    try {
+      args = JSON.parse(raw);
+    } catch (e) {
+      toast(t("opt.invalidArgs") + e.message, "err");
+      return;
+    }
   }
-  out.textContent = JSON.stringify(resp.response, null, 2);
+  const payload = {
+    jsonrpc: "2.0",
+    id: Date.now(),
+    method: "tools/call",
+    params: { name, arguments: args },
+  };
+  try {
+    const resp = await chrome.runtime.sendMessage({ type: "mcp-request", payload });
+    showResponse(resp);
+  } catch (e) {
+    showOutput("Error: " + e.message, true);
+  }
 }
 
 async function sendRaw() {
-  const text = $("rawInput").value.trim();
-  if (!text) { toast(t("mcp.emptyReq"), "err"); return; }
+  const raw = $("rawInput").value.trim();
+  if (!raw) return;
   let payload;
-  try { payload = JSON.parse(text); }
-  catch (e) { toast(t("mcp.invalidJson") + e.message, "err"); return; }
-  const out = $("rawOutput");
-  out.hidden = false;
-  out.textContent = t("mcp.sending");
-  const resp = await chrome.runtime.sendMessage({ type: "mcp-request", payload });
-  if (!resp || !resp.ok) {
-    out.textContent = `${t("mcp.error")}${resp ? resp.error : t("mcp.noResponse")}`;
+  try {
+    payload = JSON.parse(raw);
+  } catch (e) {
+    toast(t("opt.invalidArgs") + e.message, "err");
     return;
   }
-  out.textContent = resp.response ? JSON.stringify(resp.response, null, 2) : t("mcp.notifAccepted");
+  try {
+    const resp = await chrome.runtime.sendMessage({ type: "mcp-request", payload });
+    showResponse(resp);
+  } catch (e) {
+    showOutput("Error: " + e.message, true);
+  }
+}
+
+function showResponse(resp) {
+  if (resp && resp.ok && resp.response) {
+    showOutput(JSON.stringify(resp.response, null, 2));
+  } else if (resp && resp.ok && resp.accepted) {
+    showOutput("[notification accepted — no response]");
+  } else {
+    showOutput("Error: " + (resp && resp.error ? resp.error : "unknown"), true);
+  }
+}
+
+function showOutput(text, isError) {
+  const out = $("output");
+  const hint = $("outputHint");
+  out.hidden = false;
+  hint.hidden = true;
+  out.textContent = text;
+  if (isError) out.style.color = "var(--danger)";
+  else out.style.color = "";
+}
+
+function toast(msg, kind) {
+  const el = $("toast");
+  el.textContent = msg;
+  el.className = `toast ${kind}`;
+  el.hidden = false;
+  setTimeout(() => { el.hidden = true; }, 2500);
+}
+
+function escapeHtml(s) {
+  const el = document.createElement("span");
+  el.textContent = s;
+  return el.innerHTML;
 }
 
 $("copyId").addEventListener("click", async () => {
@@ -133,23 +143,8 @@ $("copyId").addEventListener("click", async () => {
 $("toolSelect").addEventListener("change", renderToolDesc);
 $("refreshTools").addEventListener("click", loadTools);
 $("callTool").addEventListener("click", callTool);
-$("clearOutput").addEventListener("click", () => { $("output").hidden = true; $("output").textContent = ""; });
+$("clearOutput").addEventListener("click", () => { $("output").hidden = true; $("output").textContent = ""; $("outputHint").hidden = false; });
 $("sendRaw").addEventListener("click", sendRaw);
-$("bridgeRefresh").addEventListener("click", refreshMcpBridge);
-document.querySelectorAll(".bridge-ep-row button[data-mcp-ep]").forEach((btn) => {
-  btn.addEventListener("click", async () => {
-    const which = btn.dataset.mcpEp;
-    const input = which === "http" ? $("mcpEpHttp") : $("mcpEpSse");
-    try {
-      await navigator.clipboard.writeText(input.value);
-      toast(t("mcp.bridgeCopied"), "ok");
-    } catch (e) {
-      toast(t("mcp.bridgeCopy") + ": " + e.message, "err");
-    }
-  });
-});
-
-$("rawInput").value = JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }, null, 2);
 
 (async () => {
   await initLang(STRINGS);
@@ -157,6 +152,4 @@ $("rawInput").value = JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/lis
   applyTranslations();
   loadExtId();
   loadTools();
-  refreshMcpBridge();
-  setInterval(refreshMcpBridge, 3000);
 })();

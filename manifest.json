@@ -1,56 +1,50 @@
 {
   "manifest_version": 3,
   "name": "MCP-Browser-Bridge",
-  "version": "0.6.0",
-  "description": "Pure browser extension exposing search engines and live tabs as MCP tools. AI can operate web pages via JS. Zero dependencies.",
-  "minimum_chrome_version": "114",
+  "version": "0.6.1",
+  "description": "Expose your favorite search engines and live browser tabs as MCP tools. Pure extension, no external setup.",
+  "author": "XiaoBaiLovesStirring",
+  "homepage_url": "https://github.com/XiaoBaiLovesStirring/MCP-Browser-Bridge",
+  "minimum_chrome_version": "109",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-  "action": {
-    "default_popup": "popup/popup.html",
-    "default_title": "MCP-Browser-Bridge",
-    "default_icon": {
-      "16": "icons/icon16.png",
-      "48": "icons/icon48.png",
-      "128": "icons/icon128.png"
-    }
-  },
-  "background": {
-    "service_worker": "background/background.js",
-    "type": "module"
-  },
-  "options_ui": {
-    "page": "options/options.html",
-    "open_in_tab": true
-  },
   "permissions": [
     "storage",
     "tabs",
     "activeTab",
-    "scripting",
-    "nativeMessaging"
+    "scripting"
   ],
   "host_permissions": [
     "<all_urls>"
   ],
+  "background": {
+    "service_worker": "background/background.js",
+    "type": "module"
+  },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
       "js": ["content/content.js"],
-      "run_at": "document_idle",
-      "all_frames": false
+      "run_at": "document_idle"
     }
   ],
+  "options_ui": {
+    "page": "options/options",
+    "open_in_tab": true
+  },
+  "action": {
+    "default_popup": "popup/popup",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_title": "MCP-Browser-Bridge"
+  },
   "externally_connectable": {
     "matches": ["<all_urls>"]
-  },
-  "web_accessible_resources": [
-    {
-      "resources": ["mcp/mcp.html", "options/options.html", "popup/popup.html"],
-      "matches": ["<all_urls>"]
-    }
-  ]
+  }
 }

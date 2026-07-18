@@ -3,47 +3,33 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MCP-Browser-Bridge</title>
   <link rel="stylesheet" href="popup.css" />
 </head>
 <body>
-  <div class="popup">
-    <header>
-      <img src="../icons/icon48.png" alt="" class="logo" />
-      <div>
-        <div class="title" data-i18n="pop.title">MCP-Browser-Bridge</div>
-        <div class="status" id="statusText" data-i18n="pop.active">Active</div>
-      </div>
-      <span class="dot connected"></span>
-    </header>
-
-    <div class="lang-row">
-      <div class="lang-switch" id="langSwitch">
-        <button type="button" data-lang="en" class="lang">EN</button>
-        <button type="button" data-lang="zh" class="lang">中文</button>
-      </div>
-    </div>
-
-    <div class="meta" id="meta">—</div>
-    <div class="bridge-line" id="bridgeLine" hidden>
-      <span class="bridge-dot" id="bridgeDot"></span>
-      <span id="bridgeText">—</span>
-    </div>
-
-    <div class="actions">
-      <button id="consoleBtn" class="btn primary" data-i18n="pop.console">MCP Console</button>
-      <button id="optionsBtn" class="btn" data-i18n="pop.settings">Settings</button>
-    </div>
-
-    <div class="section">
-      <div class="section-title" data-i18n="pop.quickTest">Quick test</div>
-      <div class="row">
-        <input type="text" id="queryInput" data-i18n-attr="pop.searchQuery:placeholder" placeholder="Search query…" />
-        <button id="searchBtn" class="btn small primary" data-i18n="pop.search">Search</button>
-      </div>
-      <pre id="testOutput" class="output" hidden></pre>
-    </div>
+  <div class="lang-switch" id="langSwitch">
+    <button type="button" data-lang="en" class="lang">EN</button>
+    <button type="button" data-lang="zh" class="lang">中文</button>
   </div>
+
+  <div class="status-row">
+    <span class="dot" id="statusDot"></span>
+    <span id="statusText">—</span>
+  </div>
+  <div class="meta" id="meta">—</div>
+
+  <div class="actions">
+    <button id="openOptionsBtn" class="btn" data-i18n="pop.options">Settings</button>
+    <button id="openConsoleBtn" class="btn" data-i18n="pop.console">MCP Console</button>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="quick-search">
+    <input type="text" id="searchInput" placeholder="search…" data-i18n-placeholder="pop.placeholder" />
+    <button id="searchBtn" class="btn primary" data-i18n="pop.search">Search</button>
+  </div>
+  <pre class="output" id="output" hidden></pre>
+
   <script type="module" src="popup.js"></script>
 </body>
 </html>

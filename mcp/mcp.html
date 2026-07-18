@@ -11,92 +11,68 @@
     <div class="brand">
       <img src="../icons/icon48.png" alt="" class="brand-icon" />
       <div>
-        <h1 data-i18n="mcp.title">MCP Console</h1>
-        <p class="subtitle" data-i18n="mcp.subtitle">Invoke any tool directly, or connect an external MCP client using the extension ID below.</p>
+        <h1>MCP Console</h1>
+        <p class="subtitle" data-i18n="mcp.subtitle">Invoke tools and send raw JSON-RPC to the MCP server.</p>
       </div>
     </div>
-    <div class="lang-switch" id="langSwitch">
-      <button type="button" data-lang="en" class="lang">EN</button>
-      <button type="button" data-lang="zh" class="lang">中文</button>
+    <div class="topbar-right">
+      <div class="lang-switch" id="langSwitch">
+        <button type="button" data-lang="en" class="lang">EN</button>
+        <button type="button" data-lang="zh" class="lang">中文</button>
+      </div>
     </div>
   </header>
 
   <main class="layout">
     <section class="card">
-      <h2 data-i18n="mcp.extIdTitle">Extension ID</h2>
-      <p class="hint" data-i18n="mcp.extIdHint">Web-based MCP clients call <code>chrome.runtime.sendMessage(EXTENSION_ID, { type: "mcp", payload: &lt;json-rpc&gt; }, callback)</code> to invoke tools. Copy this ID into your client config.</p>
-      <div class="row">
-        <input type="text" id="extId" readonly />
-        <button id="copyId" class="btn primary" data-i18n="mcp.copy">Copy</button>
+      <h2 data-i18n="mcp.connectTitle">How to connect</h2>
+      <p class="hint" data-i18n="mcp.connectHint">Call <code>chrome.runtime.sendMessage</code> from any web page with your extension id. The extension id is shown below.</p>
+      <div class="id-row">
+        <input type="text" id="extId" readonly placeholder="Loading…" />
+        <button id="copyId" class="btn primary" data-i18n="mcp.copyId">Copy</button>
       </div>
+      <pre class="snippet"><code>chrome.runtime.sendMessage("<span id="idInSnippet">YOUR_ID</span>", {
+  type: "mcp",
+  payload: { jsonrpc: "2.0", method: "tools/list", id: 1 }
+}, (resp) => console.log(resp));</code></pre>
     </section>
 
     <section class="card">
       <div class="card-head">
-        <h2 data-i18n="mcp.bridgeCard">Native host bridge</h2>
-        <button id="bridgeRefresh" class="btn small" data-i18n="mcp.bridgeRefresh">Refresh</button>
+        <h2 data-i18n="mcp.toolsTitle">Tools</h2>
+        <button id="refreshTools" class="btn small" data-i18n="mcp.refresh">Refresh</button>
       </div>
-      <p class="hint" data-i18n="mcp.bridgeHint">Desktop MCP clients connect to the local URL below. The host is a single Node.js file (no Python) bundled in native-host/.</p>
-      <div class="bridge-row">
-        <span class="bridge-label" data-i18n="mcp.bridgeStatus">Status</span>
-        <span class="status-pill" id="mcpBridgePill" data-state="disconnected">
-          <span class="dot"></span>
-          <span id="mcpBridgeState">—</span>
-        </span>
-      </div>
-      <div class="bridge-endpoints" id="mcpBridgeEndpoints">
-        <div class="bridge-ep-row">
-          <span class="bridge-ep-label" data-i18n="opt.bridgeStreamableHttp">Streamable HTTP</span>
-          <input type="text" id="mcpEpHttp" readonly placeholder="http://127.0.0.1:7777/mcp" />
-          <button class="btn small" data-mcp-ep="http" data-i18n="mcp.bridgeCopy">Copy</button>
-        </div>
-        <div class="bridge-ep-row">
-          <span class="bridge-ep-label" data-i18n="opt.bridgeSse">Legacy SSE</span>
-          <input type="text" id="mcpEpSse" readonly placeholder="http://127.0.0.1:7777/sse" />
-          <button class="btn small" data-mcp-ep="sse" data-i18n="mcp.bridgeCopy">Copy</button>
-        </div>
-      </div>
-    </section>
-
-    <section class="card">
-      <h2 data-i18n="mcp.toolsTitle">Tools</h2>
-      <div class="row">
+      <div class="tool-select-row">
+        <span class="tool-label" data-i18n="mcp.toolLabel">Tool:</span>
         <select id="toolSelect"></select>
-        <button id="refreshTools" class="btn" data-i18n="mcp.refresh">Refresh</button>
       </div>
-      <div id="toolDesc" class="tool-desc"></div>
-      <label class="field">
-        <span data-i18n="mcp.args">Arguments (JSON)</span>
-        <textarea id="toolArgs" rows="6" placeholder='{ "query": "example" }'></textarea>
-      </label>
+      <div class="tool-desc" id="toolDesc"></div>
+      <div class="tool-args">
+        <label class="field">
+          <span data-i18n="mcp.argsLabel">Arguments (JSON)</span>
+          <textarea id="toolArgs" rows="4" placeholder='{"query": "hello"}'></textarea>
+        </label>
+      </div>
       <div class="actions">
-        <button id="callTool" class="btn primary" data-i18n="mcp.call">Call tool</button>
-        <button id="clearOutput" class="btn ghost" data-i18n="mcp.clear">Clear</button>
+        <button id="callTool" class="btn primary" data-i18n="mcp.callTool">Call tool</button>
+        <button id="clearOutput" class="btn ghost" data-i18n="mcp.clearOutput">Clear output</button>
       </div>
-      <pre id="output" class="output" hidden></pre>
     </section>
 
     <section class="card">
       <h2 data-i18n="mcp.rawTitle">Raw JSON-RPC</h2>
-      <p class="hint" data-i18n="mcp.rawHint">Send an arbitrary MCP / JSON-RPC 2.0 request.</p>
-      <label class="field">
-        <span data-i18n="mcp.request">Request</span>
-        <textarea id="rawInput" rows="8" placeholder='{"jsonrpc":"2.0","id":1,"method":"tools/list"}'></textarea>
-      </label>
-      <div class="actions">
-        <button id="sendRaw" class="btn primary" data-i18n="mcp.send">Send</button>
+      <div class="raw-area">
+        <textarea id="rawInput" rows="6" placeholder='{"jsonrpc":"2.0","method":"tools/list","id":1}'></textarea>
       </div>
-      <pre id="rawOutput" class="output" hidden></pre>
+      <div class="actions">
+        <button id="sendRaw" class="btn primary" data-i18n="mcp.sendRaw">Send raw JSON-RPC</button>
+      </div>
     </section>
 
     <section class="card">
-      <h2 data-i18n="mcp.snippetTitle">Sample client snippet</h2>
-      <pre class="snippet">const EXTENSION_ID = "<span id="idInSnippet">…</span>";
-chrome.runtime.sendMessage(
-  EXTENSION_ID,
-  { type: "mcp", payload: { jsonrpc: "2.0", id: 1, method: "tools/list" } },
-  (resp) => console.log(resp);
-);</pre>
+      <h2 data-i18n="mcp.outputTitle">Output</h2>
+      <pre class="output" id="output" hidden></pre>
+      <p class="hint" id="outputHint" data-i18n="mcp.outputHint">Call a tool or send a raw request to see the output here.</p>
     </section>
   </main>
 
