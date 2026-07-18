@@ -14,7 +14,7 @@ import {
   evalJsInTab, evalJsOnUrl, evalJsCurrent, listTabs,
 } from "../lib/search-runner.js";
 
-const SERVER_INFO = { name: "mcp-browser-bridge", version: "0.3.0" };
+const SERVER_INFO = { name: "mcp-browser-bridge", version: "0.4.0" };
 
 let server = null;
 let extensionId = null;

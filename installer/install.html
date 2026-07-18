@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MCP-Browser-Bridge · .cxr Installer</title>
+  <link rel="stylesheet" href="install.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">⬢</div>
+      <div>
+        <h1>MCP-Browser-Bridge — Installer</h1>
+        <p class="subtitle" data-i18n="subtitle">Drop a <code>.cxr</code> package to install the extension.</p>
+      </div>
+    </div>
+    <div class="lang-switch">
+      <button data-lang="en" class="lang active">EN</button>
+      <button data-lang="zh" class="lang">中文</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="card" id="dropZone">
+      <div class="drop-content">
+        <div class="drop-icon">⬇</div>
+        <h2 data-i18n="dropTitle">Drag your .cxr file here</h2>
+        <p class="muted" data-i18n="dropHint">or click to browse</p>
+        <input type="file" id="fileInput" accept=".cxr,.zip" hidden />
+      </div>
+    </section>
+
+    <section class="card" id="infoCard" hidden>
+      <h2 data-i18n="packageInfo">Package information</h2>
+      <div class="info-grid">
+        <div><span data-i18n="format">Format</span><b id="infoFormat">—</b></div>
+        <div><span data-i18n="extVersion">Extension version</span><b id="infoVersion">—</b></div>
+        <div><span data-i18n="buildDate">Build date</span><b id="infoDate">—</b></div>
+        <div><span data-i18n="fileCount">File count</span><b id="infoFiles">—</b></div>
+      </div>
+      <div class="file-tree-wrap">
+        <div class="tree-title" data-i18n="contents">Contents</div>
+        <pre id="fileTree" class="file-tree"></pre>
+      </div>
+      <div class="actions">
+        <button id="installBtn" class="btn primary" data-i18n="install">Install to folder…</button>
+        <button id="openChrome" class="btn" data-i18n="openExtensions">Open chrome://extensions</button>
+        <button id="resetBtn" class="btn ghost" data-i18n="reset">Reset</button>
+      </div>
+      <div id="installStatus" class="status" hidden></div>
+    </section>
+
+    <section class="card">
+      <h2 data-i18n="manualTitle">Manual fallback</h2>
+      <p class="muted" data-i18n="manualHint">If the installer button doesn't work (older browsers), you can still install manually:</p>
+      <ol class="steps">
+        <li data-i18n="step1">Rename <code>.cxr</code> to <code>.zip</code> (or just extract the <code>.cxr</code> directly — it's a standard ZIP).</li>
+        <li data-i18n="step2">Unzip it to any folder.</li>
+        <li data-i18n="step3">Open <code>chrome://extensions</code>, enable <b>Developer mode</b>, click <b>Load unpacked</b>, select the folder.</li>
+      </ol>
+    </section>
+  </main>
+
+  <script type="module" src="install.js"></script>
+</body>
+</html>
