@@ -42,11 +42,11 @@
       <div class="field">
         <span>Transport</span>
         <div class="segmented" id="transport">
-          <button type="button" data-value="sse" class="seg active">SSE</button>
-          <button type="button" data-value="http" class="seg">HTTP</button>
-          <button type="button" data-value="both" class="seg">Both</button>
+          <button type="button" data-value="streamable" class="seg">Streamable HTTP</button>
+          <button type="button" data-value="sse" class="seg">Legacy SSE</button>
+          <button type="button" data-value="both" class="seg active">Both</button>
         </div>
-        <small class="muted">SSE = streamable HTTP (recommended for MCP). HTTP = single request/response. Both = serve both endpoints.</small>
+        <small class="muted">Streamable HTTP = MCP 2025-06-18 (recommended; works with Claude Desktop, Cursor, Cline, Windsurf). Legacy SSE = MCP 2024-11-05 (older clients). Both = enable all endpoints for maximum compatibility.</small>
       </div>
       <div class="grid two">
         <label class="field checkbox">

@@ -6,9 +6,12 @@ import { McpServer, textContent, errorContent } from "../lib/mcp-protocol.js";
 import { Bridge } from "../lib/bridge.js";
 import { loadEngines, enabledEngines, findEngine } from "../lib/search-engines.js";
 import { loadSettings, saveSettings } from "../lib/settings.js";
-import { runSearch, fetchPage, extractCurrentTab } from "../lib/search-runner.js";
+import {
+  runSearch, fetchPage, extractCurrentTab,
+  evalJsInTab, evalJsOnUrl, evalJsCurrent, listTabs,
+} from "../lib/search-runner.js";
 
-const SERVER_INFO = { name: "mcp-browser-bridge", version: "0.1.0" };
+const SERVER_INFO = { name: "mcp-browser-bridge", version: "0.2.0" };
 
 let bridge = null;
 let statusCache = { state: "init", detail: "starting", ts: Date.now() };
@@ -109,6 +112,93 @@ function buildServer() {
       status: statusCache,
       settings: { port: settings.port, transport: settings.transport, host: settings.host },
     }, null, 2));
+  });
+
+  // --- Tool: list_tabs ---
+  server.registerTool("list_tabs", {
+    description: "List all open browser tabs (id, url, title, active). Use this to pick a target tab for eval_js_tab.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        currentWindowOnly: { type: "boolean", default: false, description: "Only list tabs in the current window." },
+      },
+    },
+  }, async (args) => {
+    let tabs;
+    if (args && args.currentWindowOnly) {
+      tabs = await chrome.tabs.query({ currentWindow: true });
+    } else {
+      tabs = await listTabs();
+    }
+    return textContent(JSON.stringify(tabs, null, 2));
+  });
+
+  // --- Tool: eval_js ---
+  server.registerTool("eval_js", {
+    description: "Open a URL in a new background tab, wait for it to load, then execute arbitrary JavaScript in the page and return the result. This lets you operate the page as a real user would: click buttons, fill forms, read SPA-rendered DOM, scrape dynamic content, etc. The tab is closed afterwards unless tabLifecycle is 'keep'.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        url: { type: "string", description: "Absolute URL to open in the new tab." },
+        code: { type: "string", description: "JavaScript code to run. Treated as the body of an async function: you may use `await`, and the last expression's resolved value is returned. Examples: `return document.title;` or `const btn = document.querySelector('button'); btn.click(); await new Promise(r => setTimeout(r, 500)); return document.body.innerText;`" },
+        world: { type: "string", enum: ["ISOLATED", "MAIN"], default: "ISOLATED", description: "ISOLATED (default): runs in the extension's isolated world, safe from page CSP, full DOM access but cannot read page JS globals. MAIN: runs in the page's main world, can read/modify page JS variables and SPA framework state (React/Vue/jQuery), but subject to the page's CSP." },
+      },
+      required: ["url", "code"],
+    },
+  }, async (args) => {
+    if (!args || !args.url) return errorContent("url is required");
+    if (!args || !args.code) return errorContent("code is required");
+    const settings = await loadSettings();
+    try {
+      const result = await evalJsOnUrl(args.url, args.code, settings, { world: args.world });
+      return textContent(JSON.stringify(result, null, 2));
+    } catch (e) {
+      return errorContent(`eval_js failed: ${e.message}`);
+    }
+  });
+
+  // --- Tool: eval_js_current ---
+  server.registerTool("eval_js_current", {
+    description: "Execute arbitrary JavaScript in the currently active browser tab (the page the user is looking at). No new tab is opened; the page stays open. Use this to operate on or parse the page the user is currently viewing.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        code: { type: "string", description: "JavaScript code to run (async function body). See eval_js for details." },
+        world: { type: "string", enum: ["ISOLATED", "MAIN"], default: "ISOLATED" },
+      },
+      required: ["code"],
+    },
+  }, async (args) => {
+    if (!args || !args.code) return errorContent("code is required");
+    try {
+      const result = await evalJsCurrent(args.code, { world: args.world });
+      return textContent(JSON.stringify(result, null, 2));
+    } catch (e) {
+      return errorContent(`eval_js_current failed: ${e.message}`);
+    }
+  });
+
+  // --- Tool: eval_js_tab ---
+  server.registerTool("eval_js_tab", {
+    description: "Execute arbitrary JavaScript in a specific open tab by its id (use list_tabs to discover tab ids). Lets you operate on or parse any already-open page without opening a new one.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        tabId: { type: "integer", description: "The target tab id (from list_tabs)." },
+        code: { type: "string", description: "JavaScript code to run (async function body). See eval_js for details." },
+        world: { type: "string", enum: ["ISOLATED", "MAIN"], default: "ISOLATED" },
+      },
+      required: ["tabId", "code"],
+    },
+  }, async (args) => {
+    if (!args || args.tabId === undefined || args.tabId === null) return errorContent("tabId is required");
+    if (!args || !args.code) return errorContent("code is required");
+    try {
+      const result = await evalJsInTab(Number(args.tabId), args.code, { world: args.world });
+      return textContent(JSON.stringify(result, null, 2));
+    } catch (e) {
+      return errorContent(`eval_js_tab failed: ${e.message}`);
+    }
   });
 
   // --- Resource: engine list ---

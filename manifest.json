@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "MCP-Browser-Bridge",
-  "version": "0.1.0",
-  "description": "Configure your favorite search engines and expose them as MCP tools over SSE/HTTP. Browser-based MCP server with built-in protocol parsing.",
+  "version": "0.2.0",
+  "description": "Expose your favorite search engines and live browser tabs as MCP tools. Built-in MCP protocol parsing, Streamable HTTP + legacy SSE transports, AI can execute page JS to operate any website. Zero external dependencies.",
   "default_locale": "en",
   "minimum_chrome_version": "114",
   "icons": {
