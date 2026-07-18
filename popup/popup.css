@@ -1,0 +1,97 @@
+:root {
+  --bg: #0f1115;
+  --surface: #171a21;
+  --surface-2: #1f242e;
+  --border: #2a313d;
+  --text: #e6e9ef;
+  --muted: #8a93a3;
+  --accent: #4f8cff;
+  --accent-2: #6aa1ff;
+  --ok: #34d399;
+  --danger: #ff5c5c;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  width: 340px;
+}
+
+.popup { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.logo { width: 32px; height: 32px; border-radius: 7px; }
+.title { font-weight: 600; font-size: 13.5px; }
+.status { color: var(--muted); font-size: 11.5px; }
+.dot {
+  width: 9px; height: 9px; border-radius: 50%; background: var(--muted);
+  margin-left: auto;
+}
+.dot.connected { background: var(--ok); box-shadow: 0 0 6px var(--ok); }
+.dot.error { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
+
+.endpoint {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 11.5px;
+  color: var(--accent-2);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  word-break: break-all;
+}
+
+.actions { display: flex; gap: 8px; }
+.btn {
+  flex: 1;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 7px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+}
+.btn:hover { background: #262c37; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary:hover { background: var(--accent-2); }
+.btn.small { flex: 0 0 auto; padding: 7px 12px; }
+
+.section { display: flex; flex-direction: column; gap: 7px; }
+.section-title { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
+.row { display: flex; gap: 6px; }
+.row input {
+  flex: 1;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 9px;
+  border-radius: 6px;
+  font-size: 12px;
+  outline: none;
+}
+.row input:focus { border-color: var(--accent); }
+
+.output {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px;
+  font-size: 11px;
+  color: var(--text);
+  max-height: 180px;
+  overflow: auto;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
